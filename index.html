@@ -381,6 +381,60 @@
   </div>
 </div>
 
+<!-- Modal: Contraseña de BORRADO -->
+<div class="modal-backdrop" id="modalPasswordDelete">
+  <div class="modal">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(209,52,45,.15);">
+        <i class="fa-solid fa-trash-can" style="color:var(--red);"></i>
+      </div>
+      <div>
+        <div class="section-title" style="font-size:1.1rem;color:#fca5a5;">Eliminar Registro</div>
+        <div style="font-size:.8rem;color:var(--text-d);">Ingrese la contraseña para continuar</div>
+      </div>
+    </div>
+    <div class="form-group mb-4">
+      <label>Contraseña</label>
+      <input type="password" class="form-control" id="passDeleteInput" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter')checkPasswordDelete()" />
+    </div>
+    <div id="passDeleteError" class="text-sm mb-3" style="color:var(--red);display:none;">
+      <i class="fa-solid fa-circle-xmark mr-1"></i>Contraseña incorrecta. Acceso denegado.
+    </div>
+    <div class="flex gap-3">
+      <button class="btn btn-danger flex-1" onclick="checkPasswordDelete()">
+        <i class="fa-solid fa-unlock-keyhole"></i>Verificar
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal('modalPasswordDelete')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmación de borrado -->
+<div class="modal-backdrop" id="modalConfirmDelete">
+  <div class="modal">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(209,52,45,.2);">
+        <i class="fa-solid fa-circle-exclamation" style="color:var(--red);font-size:1.1rem;"></i>
+      </div>
+      <div>
+        <div class="section-title" style="font-size:1.1rem;color:#fca5a5;">Confirmar Eliminación</div>
+        <div style="font-size:.8rem;color:var(--text-d);">Esta acción no se puede deshacer</div>
+      </div>
+    </div>
+    <div id="deletePreview" style="background:rgba(209,52,45,.08);border:1px solid rgba(209,52,45,.25);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:.85rem;line-height:1.7;"></div>
+    <p style="font-size:.85rem;color:var(--text-d);margin-bottom:16px;">
+      ¿Está seguro de que desea eliminar este registro permanentemente?
+    </p>
+    <div class="flex gap-3">
+      <button class="btn btn-danger flex-1" onclick="confirmarBorrado()">
+        <i class="fa-solid fa-trash-can"></i>Sí, Eliminar
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal('modalConfirmDelete')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Edición de registro -->
 <div class="modal-backdrop" id="modalEdit">
   <div class="modal" style="width:600px;max-width:98vw;">
@@ -837,7 +891,7 @@
    ───────────────────────────────────────────────────────────── */
 
   // ── CONFIG GOOGLE SHEETS (editar esta URL con la tuya) ──
-  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbycQ9bjBDzkIwEno-2uXlUVzB8FOi9okhgo1ZqpXegZDBeqwgSH01B6qnbsLTmMZxKD/exec';
+  const GOOGLE_SCRIPT_URL = 'TU_URL_AQUI';
 
   // ── CONTRASEÑA DE EDICIÓN ──
   const PASS_EDICION = 'SECADO';
@@ -846,6 +900,7 @@
   let ciclos = [];
   let filtroActivo = 'todos';
   let editIndex = null;
+  let deleteIndex = null;
   let pendingImportData = null;
 
   // Instancias de Chart.js
@@ -1040,9 +1095,13 @@
         <td style="text-align:center;">${c.diasSecBodega !== null ? c.diasSecBodega + 'd' : '—'}</td>
         <td style="text-align:center;">${c.diasBodega !== null ? c.diasBodega + 'd' : '—'}</td>
         <td>${badgeHTML(c.estado)}</td>
-        <td>
+        <td style="display:flex;gap:6px;align-items:center;">
           <button class="btn btn-ghost btn-sm" onclick="iniciarEdicion(${idx})" title="Editar registro">
             <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn btn-sm" onclick="iniciarBorrado(${idx})" title="Eliminar registro"
+            style="background:rgba(209,52,45,.12);color:#fca5a5;border:1px solid rgba(209,52,45,.3);">
+            <i class="fa-solid fa-trash-can"></i>
           </button>
         </td>
       </tr>`;
@@ -1080,6 +1139,47 @@
       document.getElementById('passInput').value = '';
       document.getElementById('passInput').focus();
     }
+  }
+
+  /* ══════════════════════════════════
+     BORRADO CON CONTRASEÑA
+  ══════════════════════════════════ */
+  function iniciarBorrado(idx) {
+    deleteIndex = idx;
+    document.getElementById('passDeleteInput').value = '';
+    document.getElementById('passDeleteError').style.display = 'none';
+    openModal('modalPasswordDelete');
+    setTimeout(() => document.getElementById('passDeleteInput').focus(), 300);
+  }
+
+  function checkPasswordDelete() {
+    const val = document.getElementById('passDeleteInput').value;
+    if (val === PASS_EDICION) {
+      closeModal('modalPasswordDelete');
+      const c = ciclos[deleteIndex];
+      document.getElementById('deletePreview').innerHTML = `
+        <div style="margin-bottom:4px;"><span style="color:var(--text-d);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;">Nro Secado</span><br>
+        <strong style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;">${c.nroSecado}</strong> · Ciclo <strong>${c.nroCiclo}</strong></div>
+        <div><span style="color:var(--text-d);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;">Tipo · BF · Estado</span><br>
+        ${c.tipoMadera} · <strong style="color:#93c5fd;">${c.cantBF.toLocaleString()} BF</strong> · ${badgeHTML(c.estado)}</div>`;
+      openModal('modalConfirmDelete');
+    } else {
+      document.getElementById('passDeleteError').style.display = 'block';
+      document.getElementById('passDeleteInput').value = '';
+      document.getElementById('passDeleteInput').focus();
+    }
+  }
+
+  function confirmarBorrado() {
+    const info = ciclos[deleteIndex];
+    ciclos.splice(deleteIndex, 1);
+    deleteIndex = null;
+    guardarEnStorage();
+    actualizarKPIs();
+    renderTabla();
+    actualizarGraficas();
+    closeModal('modalConfirmDelete');
+    toast(`Registro "${info.nroSecado} · ${info.nroCiclo}" eliminado.`, 'warn');
   }
 
   function abrirModalEdicion(idx) {
