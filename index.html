@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Control de Secado de Madera | BALSASUD</title>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SISTEMA DE CONTROL DE DATOS DE SECADO DE MADERA
+     Desarrollado por: Diego Fernando Jáuregui Vásquez
+     Versión: 1.0.0
+     ═══════════════════════════════════════════════════════════════ -->
+
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --navy:   #1D3A7A;
+    --navy-d: #142a5a;
+    --navy-l: #2a4fa0;
+    --red:    #D1342D;
+    --amber:  #F59E0B;
+    --green:  #16a34a;
+    --slate:  #1e2535;
+    --surface:#111827;
+    --card:   #1a2236;
+    --border: #263152;
+    --muted:  #64748b;
+    --text:   #e2e8f0;
+    --text-d: #94a3b8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--surface);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── BG TEXTURE ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 10% 0%, rgba(29,58,122,.35) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 100%, rgba(209,52,45,.15) 0%, transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .z-content { position: relative; z-index: 1; }
+
+  /* ─── TOPBAR ─── */
+  .topbar {
+    background: rgba(17,24,39,.92);
+    border-bottom: 2px solid var(--navy);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 50;
+  }
+
+  .logo-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    letter-spacing: .04em;
+  }
+
+  /* ─── KPI CARDS ─── */
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+  .kpi-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .kpi-card.bf::before   { background: var(--navy); }
+  .kpi-card.sec::before  { background: var(--red); }
+  .kpi-card.stk::before  { background: var(--amber); }
+  .kpi-card.maq::before  { background: var(--green); }
+
+  .kpi-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .kpi-label {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-d);
+    margin-top: 4px;
+  }
+  .kpi-icon {
+    position: absolute; right: 20px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 2.5rem;
+    opacity: .12;
+  }
+
+  /* ─── PANEL / CARD GENERIC ─── */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-d);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel-header i { color: var(--navy-l); }
+
+  /* ─── FORM ─── */
+  .form-group label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-d);
+    margin-bottom: 6px;
+  }
+  .form-control {
+    width: 100%;
+    background: #0f1623;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: .9rem;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .form-control:focus {
+    border-color: var(--navy-l);
+    box-shadow: 0 0 0 3px rgba(42,79,160,.25);
+  }
+  .form-control option { background: #0f1623; }
+
+  /* ─── CALC FIELDS (read-only) ─── */
+  .calc-field {
+    background: rgba(29,58,122,.15);
+    border: 1px dashed var(--navy);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #93c5fd;
+    min-height: 42px;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: .9rem;
+    letter-spacing: .04em; text-transform: uppercase;
+    cursor: pointer; border: none; transition: all .2s;
+  }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-l); box-shadow: 0 6px 20px rgba(29,58,122,.5); }
+  .btn-danger  { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-amber   { background: var(--amber); color: #000; }
+  .btn-amber:hover { background: #d97706; }
+  .btn-green   { background: var(--green); color: #fff; }
+  .btn-green:hover { background: #15803d; }
+  .btn-ghost   { background: transparent; color: var(--text-d); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--border); color: var(--text); }
+  .btn-sm { padding: 6px 12px; font-size: .8rem; }
+
+  /* ─── STATUS BADGES ─── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: .78rem;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .badge-secando  { background: var(--red);   color: #fff; }
+  .badge-stock    { background: var(--amber);  color: #000; }
+  .badge-maquinando { background: var(--green); color: #fff; }
+
+  /* ─── TABLE ─── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .data-table thead tr {
+    background: rgba(29,58,122,.3);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    font-size: .72rem;
+    color: var(--text-d);
+  }
+  .data-table th, .data-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .data-table tbody tr:hover { background: rgba(255,255,255,.03); }
+  .data-table tbody tr.highlight-row { background: rgba(245,158,11,.04); }
+
+  /* ─── MODAL ─── */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.7);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+  }
+  .modal-backdrop.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 420px; max-width: 95vw;
+    transform: translateY(20px);
+    transition: transform .25s;
+  }
+  .modal-backdrop.open .modal { transform: translateY(0); }
+
+  /* ─── TABS ─── */
+  .tab-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: .85rem;
+    letter-spacing: .05em; text-transform: uppercase;
+    cursor: pointer; border: 1px solid transparent;
+    color: var(--text-d); background: transparent;
+    transition: all .2s;
+  }
+  .tab-btn.active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy-l);
+  }
+  .tab-btn:hover:not(.active) { border-color: var(--border); color: var(--text); }
+
+  /* ─── SECTION TITLE ─── */
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 1.4rem;
+    letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text);
+  }
+  .section-title span { color: var(--navy-l); }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ─── TOAST ─── */
+  #toast-container {
+    position: fixed; bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 10px;
+    z-index: 200;
+  }
+  .toast {
+    background: var(--card);
+    border-left: 4px solid var(--navy);
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: .88rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    display: flex; align-items: center; gap: 10px;
+    animation: slideIn .3s ease;
+    max-width: 320px;
+  }
+  .toast.success { border-color: var(--green); }
+  .toast.error   { border-color: var(--red); }
+  .toast.warn    { border-color: var(--amber); }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ─── CHART CONTAINER ─── */
+  .chart-wrap { position: relative; height: 240px; }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    height: 1px; background: var(--border);
+    margin: 24px 0;
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: none; } }
+  .fade-up { animation: fadeUp .4s ease both; }
+
+  /* ─── PASSWORD LOCK ICON ─── */
+  .lock-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .72rem; color: var(--amber);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; letter-spacing: .04em;
+  }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .empty-state i { font-size: 3rem; margin-bottom: 12px; opacity: .4; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    .kpi-value { font-size: 1.8rem; }
+    .kpi-icon  { font-size: 1.8rem; }
+    .data-table { font-size: .75rem; }
+    .data-table th, .data-table td { padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     TOAST CONTAINER
+════════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ════════════════════════════════════════════════════
+     MODALES
+════════════════════════════════════════════════════ -->
+
+<!-- Modal: Contraseña de edición -->
+<div class="modal-backdrop" id="modalPassword">
+  <div class="modal">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(245,158,11,.15);">
+        <i class="fa-solid fa-lock" style="color:var(--amber);"></i>
+      </div>
+      <div>
+        <div class="section-title" style="font-size:1.1rem;">Acceso Protegido</div>
+        <div style="font-size:.8rem;color:var(--text-d);">Ingrese la contraseña para editar</div>
+      </div>
+    </div>
+    <div class="form-group mb-4">
+      <label>Contraseña</label>
+      <input type="password" class="form-control" id="passInput" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter')checkPassword()" />
+    </div>
+    <div id="passError" class="text-sm mb-3" style="color:var(--red);display:none;">
+      <i class="fa-solid fa-circle-xmark mr-1"></i>Contraseña incorrecta. Acceso denegado.
+    </div>
+    <div class="flex gap-3">
+      <button class="btn btn-amber flex-1" onclick="checkPassword()">
+        <i class="fa-solid fa-unlock-keyhole"></i>Desbloquear
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal('modalPassword')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edición de registro -->
+<div class="modal-backdrop" id="modalEdit">
+  <div class="modal" style="width:600px;max-width:98vw;">
+    <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(29,58,122,.25);">
+          <i class="fa-solid fa-pen-to-square" style="color:#93c5fd;"></i>
+        </div>
+        <div class="section-title" style="font-size:1.1rem;">Editar Registro</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalEdit')">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="editFormContainer"></div>
+    <div class="flex gap-3 mt-5">
+      <button class="btn btn-primary flex-1" onclick="saveEdit()">
+        <i class="fa-solid fa-floppy-disk"></i>Guardar Cambios
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal('modalEdit')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmación de importación -->
+<div class="modal-backdrop" id="modalImport">
+  <div class="modal">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(209,52,45,.15);">
+        <i class="fa-solid fa-triangle-exclamation" style="color:var(--red);"></i>
+      </div>
+      <div>
+        <div class="section-title" style="font-size:1.1rem;">Confirmar Importación</div>
+        <div style="font-size:.8rem;color:var(--text-d);">Esta acción reemplazará todos los datos actuales</div>
+      </div>
+    </div>
+    <p style="font-size:.88rem;color:var(--text-d);line-height:1.6;" class="mb-4">
+      Está a punto de importar datos desde un archivo JSON. Los registros actuales serán <strong style="color:var(--red);">reemplazados permanentemente</strong>. ¿Desea continuar?
+    </p>
+    <div class="flex gap-3">
+      <button class="btn btn-danger flex-1" onclick="confirmImport()">
+        <i class="fa-solid fa-file-import"></i>Sí, Importar
+      </button>
+      <button class="btn btn-ghost" onclick="closeModal('modalImport')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     TOPBAR
+════════════════════════════════════════════════════ -->
+<header class="topbar z-content">
+  <div style="max-width:1400px;margin:auto;padding:0 24px;">
+    <div class="flex items-center justify-between" style="height:60px;">
+      <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-9 h-9 rounded-lg" style="background:var(--navy);">
+          <i class="fa-solid fa-fire-flame-curved text-white" style="font-size:.9rem;"></i>
+        </div>
+        <div>
+          <div class="logo-text" style="font-size:1.05rem;color:#fff;">
+            SECADO <span style="color:#93c5fd;">CONTROL</span>
+          </div>
+          <div style="font-size:.65rem;color:var(--text-d);letter-spacing:.12em;text-transform:uppercase;">
+            Sistema de Gestión de Ciclos de Secado
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="lock-badge">
+          <i class="fa-solid fa-shield-halved"></i>
+          PROTEGIDO
+        </div>
+        <div style="font-size:.75rem;color:var(--text-d);" id="clockDisplay"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════
+     MAIN LAYOUT
+════════════════════════════════════════════════════ -->
+<main class="z-content" style="max-width:1400px;margin:auto;padding:28px 24px;">
+
+  <!-- ── KPI CARDS ── -->
+  <div class="grid gap-4 mb-6" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+    <div class="kpi-card bf fade-up" style="animation-delay:.05s">
+      <div class="kpi-value" id="kpi-bf" style="color:#93c5fd;">0</div>
+      <div class="kpi-label">Total BF Procesados</div>
+      <i class="fa-solid fa-layer-group kpi-icon" style="color:#93c5fd;"></i>
+    </div>
+    <div class="kpi-card sec fade-up" style="animation-delay:.1s">
+      <div class="kpi-value" id="kpi-sec" style="color:#fca5a5;">0</div>
+      <div class="kpi-label">Ciclos en Secado</div>
+      <i class="fa-solid fa-fire kpi-icon" style="color:#fca5a5;"></i>
+    </div>
+    <div class="kpi-card stk fade-up" style="animation-delay:.15s">
+      <div class="kpi-value" id="kpi-stk" style="color:var(--amber);">0</div>
+      <div class="kpi-label">Ciclos en Stock</div>
+      <i class="fa-solid fa-warehouse kpi-icon" style="color:var(--amber);"></i>
+    </div>
+    <div class="kpi-card maq fade-up" style="animation-delay:.2s">
+      <div class="kpi-value" id="kpi-maq" style="color:#86efac;">0</div>
+      <div class="kpi-label">Ciclos Maquinando</div>
+      <i class="fa-solid fa-gears kpi-icon" style="color:#86efac;"></i>
+    </div>
+    <div class="kpi-card fade-up" style="animation-delay:.25s;border-color:rgba(245,158,11,.3);">
+      <div class="kpi-value" id="kpi-total" style="color:#e2e8f0;">0</div>
+      <div class="kpi-label">Total de Ciclos</div>
+      <i class="fa-solid fa-clipboard-list kpi-icon" style="color:#e2e8f0;"></i>
+    </div>
+  </div>
+
+  <!-- ── TABS ── -->
+  <div class="flex gap-2 mb-5 flex-wrap">
+    <button class="tab-btn active" onclick="showTab('formulario', this)">
+      <i class="fa-solid fa-plus mr-1"></i>Nuevo Ciclo
+    </button>
+    <button class="tab-btn" onclick="showTab('historial', this)">
+      <i class="fa-solid fa-table mr-1"></i>Historial
+    </button>
+    <button class="tab-btn" onclick="showTab('graficas', this)">
+      <i class="fa-solid fa-chart-bar mr-1"></i>Gráficas
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: FORMULARIO
+  ════════════════════════════════════════════ -->
+  <div id="tab-formulario">
+    <div class="panel fade-up" style="animation-delay:.3s;">
+      <div class="panel-header">
+        <i class="fa-solid fa-plus-circle"></i>
+        Ingreso de Nuevo Ciclo de Secado
+      </div>
+      <div style="padding:24px;">
+        <div class="grid gap-5" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+
+          <!-- Campo 1: Nro Secado -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-hashtag mr-1"></i>Número de Secado</label>
+            <input type="text" class="form-control" id="nroSecado" placeholder="Ej: SEC-2025-001" />
+          </div>
+
+          <!-- Campo 2: Nro Ciclo -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-rotate mr-1"></i>Número de Ciclo</label>
+            <input type="text" class="form-control" id="nroCiclo" placeholder="Ej: C-001" />
+          </div>
+
+          <!-- Campo 3: Tipo de Madera -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-tree mr-1"></i>Tipo de Madera</label>
+            <select class="form-control" id="tipoMadera">
+              <option value="">-- Seleccionar --</option>
+              <option value="Delgada">Delgada</option>
+              <option value="Mixto">Mixto</option>
+              <option value="Gruesa">Gruesa</option>
+            </select>
+          </div>
+
+          <!-- Campo 4: BF -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-cube mr-1"></i>Cantidad BF</label>
+            <input type="number" class="form-control" id="cantBF" placeholder="Board Feet" min="0" />
+          </div>
+
+          <!-- Campo 5: Declaración -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-certificate mr-1"></i>Declaración</label>
+            <select class="form-control" id="declaracion">
+              <option value="">-- Seleccionar --</option>
+              <option value="BS">BS</option>
+              <option value="FSC">FSC</option>
+              <option value="BS-SDD">BS-SDD</option>
+            </select>
+          </div>
+
+          <!-- Campo 6: Fecha Ingreso Secado -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-calendar-plus mr-1"></i>Fecha Ingreso a Secado</label>
+            <input type="date" class="form-control" id="fechaIngreso" onchange="calcularCampos()" />
+          </div>
+
+          <!-- Campo 7: Fecha Finalización -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-calendar-check mr-1"></i>Fecha Finalización Secado</label>
+            <input type="date" class="form-control" id="fechaFin" onchange="calcularCampos()" />
+          </div>
+
+          <!-- Campo 8: Fecha Salida Bodega -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-door-open mr-1"></i>Fecha Salida a Bodega</label>
+            <input type="date" class="form-control" id="fechaSalidaBodega" onchange="calcularCampos()" />
+          </div>
+
+          <!-- Campo 9: Fecha Entrada Maquinado -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-screwdriver-wrench mr-1"></i>Fecha Entrada a Maquinado</label>
+            <input type="date" class="form-control" id="fechaMaquinado" onchange="calcularCampos()" />
+          </div>
+
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ── CAMPOS CALCULADOS ── -->
+        <div class="grid gap-4 mb-5" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+          <div>
+            <label class="form-group" style="display:block;margin-bottom:6px;">
+              <label style="font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-d);">
+                <i class="fa-solid fa-calculator mr-1"></i>Tiempo en Secado → Bodega (días)
+              </label>
+            </label>
+            <div class="calc-field" id="calcSecBodega">—</div>
+          </div>
+          <div>
+            <label style="font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-d);display:block;margin-bottom:6px;">
+              <i class="fa-solid fa-calculator mr-1"></i>Días en Bodega (hasta maquinado)
+            </label>
+            <div class="calc-field" id="calcDiasBodega">—</div>
+          </div>
+          <div>
+            <label style="font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-d);display:block;margin-bottom:6px;">
+              <i class="fa-solid fa-tag mr-1"></i>Estado Actual
+            </label>
+            <div id="estadoPreview" style="min-height:42px;display:flex;align-items:center;">
+              <span class="badge" style="background:rgba(100,116,139,.2);color:var(--muted);">Sin datos</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── BOTONES ACCIONES ── -->
+        <div class="flex gap-3 flex-wrap">
+          <button class="btn btn-primary" onclick="guardarCiclo()">
+            <i class="fa-solid fa-floppy-disk"></i>Guardar Ciclo
+          </button>
+          <button class="btn btn-ghost" onclick="limpiarFormulario()">
+            <i class="fa-solid fa-eraser"></i>Limpiar
+          </button>
+          <div style="flex:1;"></div>
+          <!-- EXPORTAR / IMPORTAR -->
+          <button class="btn btn-green btn-sm" onclick="exportarJSON()">
+            <i class="fa-solid fa-file-arrow-down"></i>Exportar JSON
+          </button>
+          <button class="btn btn-green btn-sm" onclick="exportarCSV()">
+            <i class="fa-solid fa-file-csv"></i>Exportar CSV
+          </button>
+          <label class="btn btn-amber btn-sm" style="cursor:pointer;">
+            <i class="fa-solid fa-file-arrow-up"></i>Importar JSON
+            <input type="file" accept=".json" id="fileImport" style="display:none;" onchange="prepararImport(event)" />
+          </label>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: HISTORIAL
+  ════════════════════════════════════════════ -->
+  <div id="tab-historial" style="display:none;">
+    <div class="panel fade-up">
+      <div class="panel-header" style="justify-content:space-between;">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-table-list"></i>
+          Historial de Ciclos de Secado
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-green btn-sm" onclick="exportarJSON()">
+            <i class="fa-solid fa-file-arrow-down"></i>Exportar
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="exportarCSV()">
+            <i class="fa-solid fa-file-csv"></i>CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros rápidos -->
+      <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm active" id="filtAll" onclick="filtrarTabla('todos',this)">Todos</button>
+        <button class="btn btn-ghost btn-sm" id="filtSec" onclick="filtrarTabla('EN SECADO',this)">
+          <span class="badge badge-secando">En Secado</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" id="filtStk" onclick="filtrarTabla('EN STOCK',this)">
+          <span class="badge badge-stock">En Stock</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" id="filtMaq" onclick="filtrarTabla('MAQUINANDO',this)">
+          <span class="badge badge-maquinando">Maquinando</span>
+        </button>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="tablaCiclos">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nro Secado</th>
+              <th>Ciclo</th>
+              <th>Tipo</th>
+              <th>BF</th>
+              <th>Declaración</th>
+              <th>F. Ingreso</th>
+              <th>F. Finalización</th>
+              <th>F. Sal. Bodega</th>
+              <th>F. Maquinado</th>
+              <th>Días Sec→Bod</th>
+              <th>Días Bodega</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaBody">
+            <tr>
+              <td colspan="14">
+                <div class="empty-state">
+                  <i class="fa-solid fa-inbox" style="display:block;"></i>
+                  <div style="font-size:.9rem;">No hay ciclos registrados</div>
+                  <div style="font-size:.78rem;margin-top:4px;">Ingrese el primer ciclo en la pestaña "Nuevo Ciclo"</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: GRÁFICAS
+  ════════════════════════════════════════════ -->
+  <div id="tab-graficas" style="display:none;">
+    <div class="grid gap-5" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));">
+
+      <!-- Gráfica 1: Ciclos por Estado (Doughnut) -->
+      <div class="panel fade-up">
+        <div class="panel-header">
+          <i class="fa-solid fa-circle-half-stroke"></i>
+          Distribución de Estados
+        </div>
+        <div style="padding:20px;">
+          <div class="chart-wrap">
+            <canvas id="chartEstados"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfica 2: BF por Tipo de Madera (Bar) -->
+      <div class="panel fade-up" style="animation-delay:.1s;">
+        <div class="panel-header">
+          <i class="fa-solid fa-chart-bar"></i>
+          BF por Tipo de Madera
+        </div>
+        <div style="padding:20px;">
+          <div class="chart-wrap">
+            <canvas id="chartBFTipo"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfica 3: Ciclos por Tipo (Bar horizontal) -->
+      <div class="panel fade-up" style="animation-delay:.15s;">
+        <div class="panel-header">
+          <i class="fa-solid fa-chart-column"></i>
+          Ciclos por Tipo de Madera
+        </div>
+        <div style="padding:20px;">
+          <div class="chart-wrap">
+            <canvas id="chartCiclosTipo"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfica 4: Declaración (Pie) -->
+      <div class="panel fade-up" style="animation-delay:.2s;">
+        <div class="panel-header">
+          <i class="fa-solid fa-certificate"></i>
+          BF por Declaración (BS/FSC/BS-SDD)
+        </div>
+        <div style="padding:20px;">
+          <div class="chart-wrap">
+            <canvas id="chartDeclaracion"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tabla resumen -->
+    <div class="panel mt-5 fade-up" style="animation-delay:.25s;">
+      <div class="panel-header"><i class="fa-solid fa-table"></i>Resumen Analítico por Tipo</div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="tablaResumen">
+          <thead>
+            <tr>
+              <th>Tipo de Madera</th>
+              <th>Ciclos</th>
+              <th>BF Total</th>
+              <th>BF Promedio/Ciclo</th>
+              <th>Días Prom. Sec→Bod</th>
+              <th>Días Prom. Bodega</th>
+            </tr>
+          </thead>
+          <tbody id="resumenBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- ════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════ -->
+<footer class="z-content" style="text-align:center;padding:20px 24px;border-top:1px solid var(--border);margin-top:40px;">
+  <div style="font-size:.7rem;color:var(--muted);letter-spacing:.06em;">
+    HECHO POR DIEGO JAUREGUI · CONTROL DE SECADO DE MADERA · BALSASUD S.A.
+  </div>
+</footer>
+
+<!-- Input oculto para importar -->
+<input type="file" id="fileImportHidden" accept=".json" style="display:none;" onchange="prepararImport(event)" />
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   SISTEMA DE CONTROL DE DATOS DE SECADO DE MADERA
+   Desarrollado por: Diego Fernando Jáuregui Vásquez
+   Versión: 1.0.0 — Uso exclusivo BALSASUD S.A.
+
+   ─── GUÍA GOOGLE APPS SCRIPT ───────────────────────────────
+   Para conectar con Google Sheets:
+   1. Abre Google Sheets → Extensiones → Apps Script
+   2. Pega este código en el editor:
+
+      function doPost(e) {
+        var sheet = SpreadsheetApp.getActiveSheet();
+        var data = JSON.parse(e.postData.contents);
+        sheet.appendRow([
+          data.nroSecado, data.nroCiclo, data.tipoMadera,
+          data.cantBF, data.declaracion, data.fechaIngreso,
+          data.fechaFin, data.fechaSalidaBodega, data.fechaMaquinado,
+          data.diasSecBodega, data.diasBodega, data.estado,
+          new Date().toISOString()
+        ]);
+        return ContentService
+          .createTextOutput(JSON.stringify({status:'ok'}))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+   3. Guarda el proyecto → Implementar → Nueva implementación
+   4. Tipo: Aplicación web · Ejecutar como: Yo · Acceso: Cualquier usuario
+   5. Copia la URL generada y reemplaza el valor de GOOGLE_SCRIPT_URL abajo.
+   ───────────────────────────────────────────────────────────── */
+
+  // ── CONFIG GOOGLE SHEETS (editar esta URL con la tuya) ──
+  const GOOGLE_SCRIPT_URL = 'TU_URL_AQUI';
+
+  // ── CONTRASEÑA DE EDICIÓN ──
+  const PASS_EDICION = 'SECADO';
+
+  // ── ESTADO GLOBAL ──
+  let ciclos = [];
+  let filtroActivo = 'todos';
+  let editIndex = null;
+  let pendingImportData = null;
+
+  // Instancias de Chart.js
+  let chEstados, chBFTipo, chCiclosTipo, chDeclaracion;
+
+  /* ══════════════════════════════════
+     INIT
+  ══════════════════════════════════ */
+  document.addEventListener('DOMContentLoaded', () => {
+    cargarDesdeStorage();
+    actualizarKPIs();
+    renderTabla();
+    reloj();
+    setInterval(reloj, 1000);
+    // Inicializar gráficas vacías
+    initCharts();
+    actualizarGraficas();
+  });
+
+  /* ══════════════════════════════════
+     RELOJ
+  ══════════════════════════════════ */
+  function reloj() {
+    const now = new Date();
+    document.getElementById('clockDisplay').textContent =
+      now.toLocaleDateString('es-EC', {weekday:'short',day:'2-digit',month:'short',year:'numeric'}) +
+      ' · ' + now.toLocaleTimeString('es-EC', {hour:'2-digit',minute:'2-digit'});
+  }
+
+  /* ══════════════════════════════════
+     TABS
+  ══════════════════════════════════ */
+  function showTab(tab, btn) {
+    ['formulario','historial','graficas'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = 'none';
+    });
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).style.display = 'block';
+    if (btn) btn.classList.add('active');
+    if (tab === 'graficas') actualizarGraficas();
+    if (tab === 'historial') renderTabla();
+  }
+
+  /* ══════════════════════════════════
+     CÁLCULO AUTOMÁTICO
+  ══════════════════════════════════ */
+  function calcularCampos() {
+    const fin  = document.getElementById('fechaFin').value;
+    const sal  = document.getElementById('fechaSalidaBodega').value;
+    const maq  = document.getElementById('fechaMaquinado').value;
+
+    // Tiempo Secado → Bodega (días entre fin secado y salida a bodega)
+    if (fin && sal) {
+      const d = diffDias(fin, sal);
+      document.getElementById('calcSecBodega').textContent = d + (d === 1 ? ' día' : ' días');
+    } else {
+      document.getElementById('calcSecBodega').textContent = '—';
+    }
+
+    // Días en Bodega (salida bodega → entrada maquinado)
+    if (sal && maq) {
+      const d = diffDias(sal, maq);
+      document.getElementById('calcDiasBodega').textContent = d + (d === 1 ? ' día' : ' días');
+    } else {
+      document.getElementById('calcDiasBodega').textContent = '—';
+    }
+
+    // Estado preview
+    const ingreso = document.getElementById('fechaIngreso').value;
+    const estado = calcularEstado(ingreso, fin, maq);
+    document.getElementById('estadoPreview').innerHTML = badgeHTML(estado);
+  }
+
+  function diffDias(desde, hasta) {
+    const d1 = new Date(desde + 'T00:00:00');
+    const d2 = new Date(hasta + 'T00:00:00');
+    return Math.max(0, Math.round((d2 - d1) / 86400000));
+  }
+
+  function calcularEstado(ingreso, fin, maq) {
+    if (!ingreso) return '';
+    if (maq)  return 'MAQUINANDO';
+    if (fin)  return 'EN STOCK';
+    return 'EN SECADO';
+  }
+
+  function badgeHTML(estado) {
+    if (!estado) return '<span class="badge" style="background:rgba(100,116,139,.2);color:var(--muted);">Sin datos</span>';
+    const map = {
+      'EN SECADO':   'badge-secando',
+      'EN STOCK':    'badge-stock',
+      'MAQUINANDO':  'badge-maquinando'
+    };
+    const ico = {
+      'EN SECADO':  'fa-fire',
+      'EN STOCK':   'fa-warehouse',
+      'MAQUINANDO': 'fa-gears'
+    };
+    return `<span class="badge ${map[estado] || ''}"><i class="fa-solid ${ico[estado] || 'fa-circle'} mr-1"></i>${estado}</span>`;
+  }
+
+  /* ══════════════════════════════════
+     GUARDAR CICLO
+  ══════════════════════════════════ */
+  function guardarCiclo() {
+    const nroSecado = document.getElementById('nroSecado').value.trim();
+    const nroCiclo  = document.getElementById('nroCiclo').value.trim();
+    const tipoMadera= document.getElementById('tipoMadera').value;
+    const cantBF    = parseFloat(document.getElementById('cantBF').value) || 0;
+    const declaracion= document.getElementById('declaracion').value;
+    const fechaIngreso= document.getElementById('fechaIngreso').value;
+    const fechaFin  = document.getElementById('fechaFin').value;
+    const fechaSalidaBodega= document.getElementById('fechaSalidaBodega').value;
+    const fechaMaquinado= document.getElementById('fechaMaquinado').value;
+
+    // Validación mínima
+    if (!nroSecado || !nroCiclo || !tipoMadera || !cantBF || !declaracion || !fechaIngreso) {
+      toast('Complete los campos obligatorios (Nro Secado, Ciclo, Tipo, BF, Declaración, Fecha Ingreso).', 'error');
+      return;
+    }
+
+    const diasSecBodega = (fechaFin && fechaSalidaBodega) ? diffDias(fechaFin, fechaSalidaBodega) : null;
+    const diasBodega    = (fechaSalidaBodega && fechaMaquinado) ? diffDias(fechaSalidaBodega, fechaMaquinado) : null;
+    const estado = calcularEstado(fechaIngreso, fechaFin, fechaMaquinado);
+
+    const ciclo = {
+      id: Date.now(),
+      nroSecado, nroCiclo, tipoMadera, cantBF, declaracion,
+      fechaIngreso, fechaFin, fechaSalidaBodega, fechaMaquinado,
+      diasSecBodega, diasBodega, estado,
+      createdAt: new Date().toISOString()
+    };
+
+    ciclos.push(ciclo);
+    guardarEnStorage();
+    actualizarKPIs();
+    renderTabla();
+    actualizarGraficas();
+    limpiarFormulario();
+    toast('Ciclo guardado correctamente.', 'success');
+
+    // Enviar a Google Sheets (si hay URL configurada)
+    enviarAGoogleSheets(ciclo);
+  }
+
+  /* ══════════════════════════════════
+     LIMPIAR FORMULARIO
+  ══════════════════════════════════ */
+  function limpiarFormulario() {
+    ['nroSecado','nroCiclo','cantBF','fechaIngreso','fechaFin',
+     'fechaSalidaBodega','fechaMaquinado'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('tipoMadera').value = '';
+    document.getElementById('declaracion').value = '';
+    document.getElementById('calcSecBodega').textContent = '—';
+    document.getElementById('calcDiasBodega').textContent = '—';
+    document.getElementById('estadoPreview').innerHTML =
+      '<span class="badge" style="background:rgba(100,116,139,.2);color:var(--muted);">Sin datos</span>';
+  }
+
+  /* ══════════════════════════════════
+     RENDER TABLA
+  ══════════════════════════════════ */
+  function renderTabla() {
+    const tbody = document.getElementById('tablaBody');
+    const data  = filtroActivo === 'todos'
+      ? ciclos
+      : ciclos.filter(c => c.estado === filtroActivo);
+
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state">
+        <i class="fa-solid fa-inbox" style="display:block;font-size:3rem;opacity:.4;margin-bottom:12px;"></i>
+        <div style="font-size:.9rem;">No hay registros ${filtroActivo !== 'todos' ? 'con estado "' + filtroActivo + '"' : ''}</div>
+      </div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map((c, i) => {
+      const idx = ciclos.indexOf(c);
+      return `<tr class="${c.estado === 'EN STOCK' ? 'highlight-row' : ''}">
+        <td style="color:var(--muted);font-size:.75rem;">${i+1}</td>
+        <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;">${c.nroSecado}</td>
+        <td>${c.nroCiclo}</td>
+        <td>${c.tipoMadera}</td>
+        <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#93c5fd;">${c.cantBF.toLocaleString()}</td>
+        <td><span style="font-size:.75rem;background:rgba(29,58,122,.3);padding:2px 8px;border-radius:4px;">${c.declaracion}</span></td>
+        <td style="color:var(--text-d);font-size:.8rem;">${fmt(c.fechaIngreso)}</td>
+        <td style="color:var(--text-d);font-size:.8rem;">${fmt(c.fechaFin)}</td>
+        <td style="color:var(--text-d);font-size:.8rem;">${fmt(c.fechaSalidaBodega)}</td>
+        <td style="color:var(--text-d);font-size:.8rem;">${fmt(c.fechaMaquinado)}</td>
+        <td style="text-align:center;">${c.diasSecBodega !== null ? c.diasSecBodega + 'd' : '—'}</td>
+        <td style="text-align:center;">${c.diasBodega !== null ? c.diasBodega + 'd' : '—'}</td>
+        <td>${badgeHTML(c.estado)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="iniciarEdicion(${idx})" title="Editar registro">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function fmt(f) { return f ? f.split('-').reverse().join('/') : '—'; }
+
+  /* ══════════════════════════════════
+     FILTRAR TABLA
+  ══════════════════════════════════ */
+  function filtrarTabla(estado, btn) {
+    filtroActivo = estado;
+    renderTabla();
+  }
+
+  /* ══════════════════════════════════
+     EDICIÓN CON CONTRASEÑA
+  ══════════════════════════════════ */
+  function iniciarEdicion(idx) {
+    editIndex = idx;
+    document.getElementById('passInput').value = '';
+    document.getElementById('passError').style.display = 'none';
+    openModal('modalPassword');
+    setTimeout(() => document.getElementById('passInput').focus(), 300);
+  }
+
+  function checkPassword() {
+    const val = document.getElementById('passInput').value;
+    if (val === PASS_EDICION) {
+      closeModal('modalPassword');
+      abrirModalEdicion(editIndex);
+    } else {
+      document.getElementById('passError').style.display = 'block';
+      document.getElementById('passInput').value = '';
+      document.getElementById('passInput').focus();
+    }
+  }
+
+  function abrirModalEdicion(idx) {
+    const c = ciclos[idx];
+    const html = `
+      <div class="grid gap-4" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group">
+          <label>Nro Secado</label>
+          <input class="form-control" id="e_nroSecado" value="${c.nroSecado}" />
+        </div>
+        <div class="form-group">
+          <label>Nro Ciclo</label>
+          <input class="form-control" id="e_nroCiclo" value="${c.nroCiclo}" />
+        </div>
+        <div class="form-group">
+          <label>Tipo de Madera</label>
+          <select class="form-control" id="e_tipoMadera">
+            ${['Delgada','Mixto','Gruesa'].map(t => `<option ${c.tipoMadera===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad BF</label>
+          <input type="number" class="form-control" id="e_cantBF" value="${c.cantBF}" />
+        </div>
+        <div class="form-group">
+          <label>Declaración</label>
+          <select class="form-control" id="e_declaracion">
+            ${['BS','FSC','BS-SDD'].map(d => `<option ${c.declaracion===d?'selected':''}>${d}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>F. Ingreso Secado</label>
+          <input type="date" class="form-control" id="e_fechaIngreso" value="${c.fechaIngreso}" />
+        </div>
+        <div class="form-group">
+          <label>F. Finalización</label>
+          <input type="date" class="form-control" id="e_fechaFin" value="${c.fechaFin || ''}" />
+        </div>
+        <div class="form-group">
+          <label>F. Salida Bodega</label>
+          <input type="date" class="form-control" id="e_fechaSalidaBodega" value="${c.fechaSalidaBodega || ''}" />
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>F. Entrada Maquinado</label>
+          <input type="date" class="form-control" id="e_fechaMaquinado" value="${c.fechaMaquinado || ''}" />
+        </div>
+      </div>`;
+    document.getElementById('editFormContainer').innerHTML = html;
+    openModal('modalEdit');
+  }
+
+  function saveEdit() {
+    const c = ciclos[editIndex];
+    c.nroSecado  = document.getElementById('e_nroSecado').value.trim();
+    c.nroCiclo   = document.getElementById('e_nroCiclo').value.trim();
+    c.tipoMadera = document.getElementById('e_tipoMadera').value;
+    c.cantBF     = parseFloat(document.getElementById('e_cantBF').value) || 0;
+    c.declaracion= document.getElementById('e_declaracion').value;
+    c.fechaIngreso      = document.getElementById('e_fechaIngreso').value;
+    c.fechaFin          = document.getElementById('e_fechaFin').value;
+    c.fechaSalidaBodega = document.getElementById('e_fechaSalidaBodega').value;
+    c.fechaMaquinado    = document.getElementById('e_fechaMaquinado').value;
+
+    c.diasSecBodega = (c.fechaFin && c.fechaSalidaBodega) ? diffDias(c.fechaFin, c.fechaSalidaBodega) : null;
+    c.diasBodega    = (c.fechaSalidaBodega && c.fechaMaquinado) ? diffDias(c.fechaSalidaBodega, c.fechaMaquinado) : null;
+    c.estado        = calcularEstado(c.fechaIngreso, c.fechaFin, c.fechaMaquinado);
+
+    guardarEnStorage();
+    actualizarKPIs();
+    renderTabla();
+    actualizarGraficas();
+    closeModal('modalEdit');
+    toast('Registro actualizado correctamente.', 'success');
+  }
+
+  /* ══════════════════════════════════
+     KPIs
+  ══════════════════════════════════ */
+  function actualizarKPIs() {
+    const totalBF  = ciclos.reduce((s, c) => s + (c.cantBF || 0), 0);
+    const enSec    = ciclos.filter(c => c.estado === 'EN SECADO').length;
+    const enStk    = ciclos.filter(c => c.estado === 'EN STOCK').length;
+    const enMaq    = ciclos.filter(c => c.estado === 'MAQUINANDO').length;
+
+    document.getElementById('kpi-bf').textContent    = totalBF.toLocaleString();
+    document.getElementById('kpi-sec').textContent   = enSec;
+    document.getElementById('kpi-stk').textContent   = enStk;
+    document.getElementById('kpi-maq').textContent   = enMaq;
+    document.getElementById('kpi-total').textContent = ciclos.length;
+  }
+
+  /* ══════════════════════════════════
+     GRÁFICAS (Chart.js)
+  ══════════════════════════════════ */
+  const CHART_DEFAULTS = {
+    color: '#94a3b8',
+    plugins: {
+      legend: { labels: { color: '#94a3b8', font: { family:'Barlow Condensed', weight:'700', size:12 } } },
+      tooltip: { backgroundColor: '#1a2236', titleColor:'#e2e8f0', bodyColor:'#94a3b8', borderColor:'#263152', borderWidth:1 }
+    }
+  };
+
+  function initCharts() {
+    const optDoughnut = {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { position: 'bottom', labels: { color:'#94a3b8', font:{family:'Barlow Condensed', weight:'700'}, padding:16 } } }
+    };
+    const optBar = {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#64748b', font:{family:'Barlow Condensed', weight:'700'} }, grid: { color:'#1e2d44' } },
+        y: { ticks: { color:'#64748b', font:{family:'Barlow Condensed', weight:'700'} }, grid: { color:'#1e2d44' } }
+      }
+    };
+
+    chEstados     = new Chart(document.getElementById('chartEstados'), {
+      type:'doughnut', options: optDoughnut,
+      data: { labels:['En Secado','En Stock','Maquinando'], datasets:[{ data:[0,0,0], backgroundColor:['#D1342D','#F59E0B','#16a34a'], borderColor:'transparent', hoverOffset:8 }] }
+    });
+
+    chBFTipo      = new Chart(document.getElementById('chartBFTipo'), {
+      type:'bar', options: optBar,
+      data: { labels:['Delgada','Mixto','Gruesa'], datasets:[{ label:'BF', data:[0,0,0], backgroundColor:['rgba(29,58,122,.8)','rgba(245,158,11,.8)','rgba(22,163,74,.8)'], borderRadius:6 }] }
+    });
+
+    chCiclosTipo  = new Chart(document.getElementById('chartCiclosTipo'), {
+      type:'bar', options: optBar,
+      data: { labels:['Delgada','Mixto','Gruesa'], datasets:[{ label:'Ciclos', data:[0,0,0], backgroundColor:['#1D3A7A','#F59E0B','#16a34a'], borderRadius:6 }] }
+    });
+
+    chDeclaracion = new Chart(document.getElementById('chartDeclaracion'), {
+      type:'pie', options: optDoughnut,
+      data: { labels:['BS','FSC','BS-SDD'], datasets:[{ data:[0,0,0], backgroundColor:['#1D3A7A','#F59E0B','#D1342D'], borderColor:'transparent', hoverOffset:8 }] }
+    });
+  }
+
+  function actualizarGraficas() {
+    if (!chEstados) return;
+
+    const enSec = ciclos.filter(c => c.estado==='EN SECADO').length;
+    const enStk = ciclos.filter(c => c.estado==='EN STOCK').length;
+    const enMaq = ciclos.filter(c => c.estado==='MAQUINANDO').length;
+
+    const tipos = ['Delgada','Mixto','Gruesa'];
+    const bfPorTipo    = tipos.map(t => ciclos.filter(c=>c.tipoMadera===t).reduce((s,c)=>s+c.cantBF,0));
+    const ciclosPorTipo= tipos.map(t => ciclos.filter(c=>c.tipoMadera===t).length);
+
+    const decl = ['BS','FSC','BS-SDD'];
+    const bfDecl = decl.map(d => ciclos.filter(c=>c.declaracion===d).reduce((s,c)=>s+c.cantBF,0));
+
+    chEstados.data.datasets[0].data     = [enSec, enStk, enMaq];
+    chBFTipo.data.datasets[0].data      = bfPorTipo;
+    chCiclosTipo.data.datasets[0].data  = ciclosPorTipo;
+    chDeclaracion.data.datasets[0].data = bfDecl;
+
+    [chEstados, chBFTipo, chCiclosTipo, chDeclaracion].forEach(c => c.update());
+
+    // Tabla resumen
+    const rb = document.getElementById('resumenBody');
+    if (!ciclos.length) { rb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Sin datos</td></tr>'; return; }
+
+    rb.innerHTML = tipos.map(t => {
+      const sub = ciclos.filter(c => c.tipoMadera === t);
+      if (!sub.length) return '';
+      const totalBF = sub.reduce((s,c) => s+c.cantBF, 0);
+      const avgBF   = (totalBF / sub.length).toFixed(0);
+      const avgSB   = media(sub.filter(c=>c.diasSecBodega!==null).map(c=>c.diasSecBodega));
+      const avgBod  = media(sub.filter(c=>c.diasBodega!==null).map(c=>c.diasBodega));
+      return `<tr>
+        <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;">${t}</td>
+        <td>${sub.length}</td>
+        <td style="color:#93c5fd;font-weight:600;">${totalBF.toLocaleString()}</td>
+        <td>${Number(avgBF).toLocaleString()}</td>
+        <td>${avgSB !== null ? avgSB.toFixed(1) + 'd' : '—'}</td>
+        <td>${avgBod !== null ? avgBod.toFixed(1) + 'd' : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function media(arr) {
+    if (!arr.length) return null;
+    return arr.reduce((s,v) => s+v, 0) / arr.length;
+  }
+
+  /* ══════════════════════════════════
+     LOCALSTORAGE
+  ══════════════════════════════════ */
+  function guardarEnStorage() {
+    localStorage.setItem('secado_ciclos', JSON.stringify(ciclos));
+  }
+
+  function cargarDesdeStorage() {
+    const raw = localStorage.getItem('secado_ciclos');
+    if (raw) { try { ciclos = JSON.parse(raw); } catch(e) { ciclos = []; } }
+  }
+
+  /* ══════════════════════════════════
+     EXPORTAR JSON
+  ══════════════════════════════════ */
+  function exportarJSON() {
+    if (!ciclos.length) { toast('No hay datos para exportar.', 'warn'); return; }
+    const blob = new Blob([JSON.stringify(ciclos, null, 2)], { type:'application/json' });
+    descargar(blob, `secado_ciclos_${fechaArchivo()}.json`);
+    toast('Archivo JSON exportado.', 'success');
+  }
+
+  /* ══════════════════════════════════
+     EXPORTAR CSV
+  ══════════════════════════════════ */
+  function exportarCSV() {
+    if (!ciclos.length) { toast('No hay datos para exportar.', 'warn'); return; }
+    const cols = ['nroSecado','nroCiclo','tipoMadera','cantBF','declaracion',
+                  'fechaIngreso','fechaFin','fechaSalidaBodega','fechaMaquinado',
+                  'diasSecBodega','diasBodega','estado','createdAt'];
+    const header = ['Nro Secado','Nro Ciclo','Tipo Madera','BF','Declaración',
+                    'F.Ingreso','F.Finalización','F.Sal.Bodega','F.Maquinado',
+                    'Días Sec→Bod','Días Bodega','Estado','Creado'];
+    const rows = ciclos.map(c => cols.map(k => `"${(c[k]??'').toString().replace(/"/g,'""')}"`).join(','));
+    const csv  = [header.join(','), ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8;' });
+    descargar(blob, `secado_ciclos_${fechaArchivo()}.csv`);
+    toast('Archivo CSV exportado.', 'success');
+  }
+
+  function descargar(blob, nombre) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nombre;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function fechaArchivo() {
+    return new Date().toISOString().slice(0,10).replace(/-/g,'');
+  }
+
+  /* ══════════════════════════════════
+     IMPORTAR JSON
+  ══════════════════════════════════ */
+  function prepararImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        pendingImportData = JSON.parse(e.target.result);
+        if (!Array.isArray(pendingImportData)) throw new Error();
+        openModal('modalImport');
+      } catch {
+        toast('Archivo JSON inválido o mal formado.', 'error');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  function confirmImport() {
+    if (!pendingImportData) return;
+    ciclos = pendingImportData;
+    guardarEnStorage();
+    actualizarKPIs();
+    renderTabla();
+    actualizarGraficas();
+    closeModal('modalImport');
+    pendingImportData = null;
+    toast(`${ciclos.length} ciclos importados correctamente.`, 'success');
+  }
+
+  /* ══════════════════════════════════
+     GOOGLE SHEETS (fetch/POST)
+     ─ Llena GOOGLE_SCRIPT_URL arriba ─
+  ══════════════════════════════════ */
+  async function enviarAGoogleSheets(ciclo) {
+    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === 'TU_URL_AQUI') return;
+    try {
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors', // Requerido por Apps Script
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ciclo)
+      });
+      // Con mode:'no-cors' no podemos leer la respuesta, pero el dato llega
+      console.log('[GSheets] Ciclo enviado:', ciclo.nroCiclo);
+    } catch (err) {
+      console.warn('[GSheets] Error al enviar:', err);
+    }
+  }
+
+  /* ══════════════════════════════════
+     MODALES
+  ══════════════════════════════════ */
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  /* ══════════════════════════════════
+     TOAST
+  ══════════════════════════════════ */
+  function toast(msg, type = 'success') {
+    const ico = { success:'fa-circle-check', error:'fa-circle-xmark', warn:'fa-triangle-exclamation' };
+    const clr = { success:'#86efac', error:'#fca5a5', warn:'#fde68a' };
+    const el  = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<i class="fa-solid ${ico[type]||'fa-info-circle'}" style="color:${clr[type]};font-size:1.1rem;"></i>${msg}`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+</script>
+</body>
+</html>
