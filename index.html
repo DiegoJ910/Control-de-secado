@@ -572,10 +572,27 @@
       <div style="padding:24px;">
         <div class="grid gap-5" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
 
-          <!-- Campo 1: Nro Secado -->
+          <!-- Campo 1: Nro Secadora -->
           <div class="form-group">
-            <label><i class="fa-solid fa-hashtag mr-1"></i>Número de Secado</label>
-            <input type="text" class="form-control" id="nroSecado" placeholder="Ej: SEC-2025-001" />
+            <label><i class="fa-solid fa-temperature-high mr-1"></i>Número de Secadora</label>
+            <select class="form-control" id="nroSecado">
+              <option value="">-- Seleccionar --</option>
+              <option value="Secadora 1">Secadora 1</option>
+              <option value="Secadora 2">Secadora 2</option>
+              <option value="Secadora 3">Secadora 3</option>
+              <option value="Secadora 4">Secadora 4</option>
+              <option value="Secadora 5">Secadora 5</option>
+              <option value="Secadora 6">Secadora 6</option>
+              <option value="Secadora 7">Secadora 7</option>
+              <option value="Secadora 8">Secadora 8</option>
+              <option value="Secadora 9">Secadora 9</option>
+              <option value="Secadora 10">Secadora 10</option>
+              <option value="Secadora 11">Secadora 11</option>
+              <option value="Secadora 12">Secadora 12</option>
+              <option value="Secadora 13">Secadora 13</option>
+              <option value="Secadora 14">Secadora 14</option>
+              <option value="Secadora 15">Secadora 15</option>
+            </select>
           </div>
 
           <!-- Campo 2: Nro Ciclo -->
@@ -731,7 +748,7 @@
           <thead>
             <tr>
               <th>#</th>
-              <th>Nro Secado</th>
+              <th>Secadora</th>
               <th>Ciclo</th>
               <th>Tipo</th>
               <th>BF</th>
@@ -1050,10 +1067,11 @@
      LIMPIAR FORMULARIO
   ══════════════════════════════════ */
   function limpiarFormulario() {
-    ['nroSecado','nroCiclo','cantBF','fechaIngreso','fechaFin',
+    ['nroCiclo','cantBF','fechaIngreso','fechaFin',
      'fechaSalidaBodega','fechaMaquinado'].forEach(id => {
       document.getElementById(id).value = '';
     });
+    document.getElementById('nroSecado').value = '';
     document.getElementById('tipoMadera').value = '';
     document.getElementById('declaracion').value = '';
     document.getElementById('calcSecBodega').textContent = '—';
@@ -1158,7 +1176,7 @@
       closeModal('modalPasswordDelete');
       const c = ciclos[deleteIndex];
       document.getElementById('deletePreview').innerHTML = `
-        <div style="margin-bottom:4px;"><span style="color:var(--text-d);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;">Nro Secado</span><br>
+        <div style="margin-bottom:4px;"><span style="color:var(--text-d);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;">Secadora</span><br>
         <strong style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;">${c.nroSecado}</strong> · Ciclo <strong>${c.nroCiclo}</strong></div>
         <div><span style="color:var(--text-d);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;">Tipo · BF · Estado</span><br>
         ${c.tipoMadera} · <strong style="color:#93c5fd;">${c.cantBF.toLocaleString()} BF</strong> · ${badgeHTML(c.estado)}</div>`;
@@ -1187,8 +1205,10 @@
     const html = `
       <div class="grid gap-4" style="grid-template-columns:1fr 1fr;">
         <div class="form-group">
-          <label>Nro Secado</label>
-          <input class="form-control" id="e_nroSecado" value="${c.nroSecado}" />
+          <label>Nro Secadora</label>
+          <select class="form-control" id="e_nroSecado">
+            ${Array.from({length:15},(_,i)=>`<option value="Secadora ${i+1}" ${c.nroSecado===`Secadora ${i+1}`?'selected':''}>Secadora ${i+1}</option>`).join('')}
+          </select>
         </div>
         <div class="form-group">
           <label>Nro Ciclo</label>
